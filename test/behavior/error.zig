@@ -992,6 +992,34 @@ test "try used in recursive function with inferred error set" {
     try expectError(error.a, Value.x(a));
 }
 
+test "recursive function with inferred error set containing try of itself" {
+    const S = struct {
+        fn recurseNTimes(n: u8) !void {
+            if (n > 10) return error.TooMuchRecursing;
+            if (n == 0) return error.DoneRecursing;
+            try recurseNTimes(n - 1);
+        }
+    };
+    try expectError(error.DoneRecursing, S.recurseNTimes(5));
+    try expectError(error.TooMuchRecursing, S.recurseNTimes(11));
+}
+
+test "recursive function explicitly returning errors from switch of itself" {
+    const S = struct {
+        fn recurseNTimes(n: u8) !void {
+            if (n > 10) return error.TooMuchRecursing;
+            if (n == 0) return error.DoneRecursing;
+            recurseNTimes(n - 1) catch |err| switch (err) {
+                error.TooMuchRecursing => unreachable,
+                error.DoneRecursing => return error.ReallyDoneRecursing,
+                error.ReallyDoneRecursing => return error.ReallyDoneRecursing,
+            };
+        }
+    };
+    try expectError(error.ReallyDoneRecursing, S.recurseNTimes(5));
+    try expectError(error.TooMuchRecursing, S.recurseNTimes(11));
+}
+
 test "generic inline function returns inferred error set" {
     const S = struct {
         inline fn retErr(comptime T: type) !T {
