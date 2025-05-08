@@ -6,11 +6,10 @@ const meta = std.meta;
 const Ast = std.zig.Ast;
 const Token = std.zig.Token;
 const primitives = std.zig.primitives;
+pub const Error = Ast.RenderError;
 
 const indent_delta = 4;
 const asm_indent_delta = 2;
-
-pub const Error = Ast.RenderError;
 
 const Ais = AutoIndentingStream(std.ArrayList(u8).Writer);
 
@@ -2141,6 +2140,7 @@ fn renderArrayInit(
 
         var sub_expr_buffer = std.ArrayList(u8).init(gpa);
         defer sub_expr_buffer.deinit();
+        defer std.log.err("sub expr buffer: {s}", .{sub_expr_buffer.items});
 
         const sub_expr_buffer_starts = try gpa.alloc(usize, section_exprs.len + 1);
         defer gpa.free(sub_expr_buffer_starts);
@@ -2251,7 +2251,6 @@ fn renderArrayInit(
                 try renderExtraNewline(r, next_expr);
             }
         }
-
         if (expr_index == array_init.ast.elements.len)
             break;
     }
@@ -2977,7 +2976,11 @@ fn renderComments(r: *Render, start: usize, end: usize) Error!bool {
         index = 1 + (newline orelse end - 1);
 
         const comment_content = mem.trimLeft(u8, trimmed_comment["//".len..], &std.ascii.whitespace);
+        std.log.err("comment: {s}, disabled_offset: {?}", .{ comment_content, ais.disabled_offset });
+
         if (ais.disabled_offset != null and mem.eql(u8, comment_content, "zig fmt: on")) {
+            std.log.err("zig fmt on", .{});
+
             // Write the source for which formatting was disabled directly
             // to the underlying writer, fixing up invalid whitespace.
             const disabled_source = tree.source[ais.disabled_offset.?..comment_start];
@@ -2986,6 +2989,8 @@ fn renderComments(r: *Render, start: usize, end: usize) Error!bool {
             try ais.underlying_writer.writeAll("// zig fmt: on\n");
             ais.disabled_offset = null;
         } else if (ais.disabled_offset == null and mem.eql(u8, comment_content, "zig fmt: off")) {
+            std.log.err("zig fmt off", .{});
+
             // Write with the canonical single space.
             try ais.writer().writeAll("// zig fmt: off\n");
             ais.disabled_offset = index;
@@ -3303,6 +3308,8 @@ fn AutoIndentingStream(comptime UnderlyingWriter: type) type {
         applied_indent: usize = 0,
 
         pub fn init(buffer: *std.ArrayList(u8), indent_delta_: usize) Self {
+            std.log.err("init ais", .{});
+
             return .{
                 .underlying_writer = buffer.writer(),
                 .indent_delta = indent_delta_,
@@ -3312,6 +3319,7 @@ fn AutoIndentingStream(comptime UnderlyingWriter: type) type {
         }
 
         pub fn deinit(self: *Self) void {
+            std.log.err("deinit ais", .{});
             self.indent_stack.deinit();
             self.space_stack.deinit();
         }

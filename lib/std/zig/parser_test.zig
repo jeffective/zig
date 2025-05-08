@@ -1393,19 +1393,21 @@ test "zig fmt: comment to disable/enable zig fmt" {
 
 test "zig fmt: (off|on) can be toggled inside nested containers" {
     try testTransform(
-        \\const data1 = .{
+        \\const a: []const []const u8 = &.{
+        \\    &.{1},
         \\    // zig fmt: off
-        \\    .{},
+        \\    &.{1 },
         \\    // zig fmt: on
         \\};
-        \\    const a = 0;
+        \\    const b = 0;
     ,
-        \\const data1 = .{
+        \\const a: []const []const u8 = &.{
+        \\    &.{1},
         \\    // zig fmt: off
-        \\    .{},
+        \\    &.{1 },
         \\    // zig fmt: on
         \\};
-        \\const a = 0;
+        \\const b = 0;
         \\
     );
 }
